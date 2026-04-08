@@ -1,0 +1,86 @@
+package cloud.pposiraegi.order.domain.entity;
+
+import cloud.pposiraegi.common.entity.BaseCreatedEntity;
+import cloud.pposiraegi.common.exception.BusinessException;
+import cloud.pposiraegi.common.exception.ErrorCode;
+import cloud.pposiraegi.order.domain.enums.OrderItemStatus;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Getter
+@Entity
+@Table(name = "order_items")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class OrderItem extends BaseCreatedEntity {
+    @Id
+    private Long id;
+
+    @Column(name = "order_id", nullable = false)
+    private Long orderId;
+
+    @Column(name = "product_id", nullable = false)
+    private Long productId;
+
+    @Column(name = "time_deal_id")
+    private Long timeDealId;
+
+    @Column(name = "sku_id", nullable = false)
+    private Long skuId;
+
+    @Column(name = "shipment_id")
+    private Long shipmentId;
+
+    @Column(name = "product_name", nullable = false, length = 255)
+    private String productName;
+
+    @Column(name = "sku_name", nullable = false, length = 100)
+    private String skuName;
+
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
+
+    @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
+    private BigDecimal unitPrice;
+
+    @Column(name = "discount_amount", nullable = false, precision = 12, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Enumerated(EnumType.STRING)
+    @Column
+    private OrderItemStatus status;
+
+    @Builder
+    public OrderItem(Long id, Long orderId, Long productId, Long skuId, String productName, String skuName, Integer quantity, BigDecimal unitPrice, BigDecimal discountAmount) {
+        this.id = id;
+        this.orderId = orderId;
+        this.productId = productId;
+        this.skuId = skuId;
+        this.productName = productName;
+        this.skuName = skuName;
+        this.quantity = quantity;
+        this.unitPrice = unitPrice;
+        this.discountAmount = discountAmount;
+        this.status = OrderItemStatus.PROCESSING;
+    }
+
+    public void registerShipmentId(Long shipmentId) {
+        this.shipmentId = shipmentId;
+    }
+
+    public void updateStatus(OrderItemStatus newStatus) {
+        if (newStatus == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        if (this.status == OrderItemStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
+        this.status = newStatus;
+    }
+}

@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:25432/ecommerce-order
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true

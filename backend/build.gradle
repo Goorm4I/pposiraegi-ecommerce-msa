@@ -1,19 +1,78 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.3'
+    id 'org.springframework.boot' version '4.0.3' apply false
     id 'io.spring.dependency-management' version '1.1.7'
     id 'org.sonarqube' version '7.2.3.7755'
 }
 
-group = 'cloud.pposiraegi'
-version = '0.0.1-SNAPSHOT'
-description = 'Backend system for PPosiraegi e-commerce platform, specialized in high-concurrency time-deal services and scalable modular architecture.'
+allprojects {
+    group = 'cloud.pposiraegi'
+    version = '0.0.1-SNAPSHOT'
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+    repositories {
+        mavenCentral()
     }
 }
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    dependencies {
+//        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+//        implementation 'org.springframework.boot:spring-boot-starter-security'
+//        implementation 'org.springframework.boot:spring-boot-starter-validation'
+//        implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+        implementation platform(SpringBootPlugin.BOM_COORDINATES)
+        annotationProcessor platform(SpringBootPlugin.BOM_COORDINATES)
+        compileOnly platform(SpringBootPlugin.BOM_COORDINATES)
+
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+//        runtimeOnly 'org.postgresql:postgresql'
+//        annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+//        testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+//        testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+//        testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+//        testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+//
+//
+//        // 테스트 전용
+//        // H2 DB
+//        testRuntimeOnly 'com.h2database:h2'
+//
+//        // JWT
+//        implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+//        runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+//        runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+//
+//        // Swagger
+//        implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
+//
+//        // Redis
+//        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+//        implementation 'org.apache.commons:commons-pool2'
+//
+//        // Redisson
+//        implementation 'org.redisson:redisson-spring-boot-starter:4.3.0'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+
+}
+
 
 configurations {
     compileOnly {
@@ -21,48 +80,6 @@ configurations {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-    compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    runtimeOnly 'org.postgresql:postgresql'
-    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
-    annotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
-    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-    // TSID Creater
-    implementation 'com.github.f4b6a3:tsid-creator:5.2.6'
-
-    // 테스트 전용
-    // H2 DB
-    testRuntimeOnly 'com.h2database:h2'
-
-    // JWT
-    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
-    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
-    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
-
-    // Swagger
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
-
-    // Redis
-    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    implementation 'org.apache.commons:commons-pool2'
-
-    // Redisson
-    implementation 'org.redisson:redisson-spring-boot-starter:4.3.0'
-}
 
 sonar {
     properties {
@@ -76,7 +93,3 @@ sonar {
     }
 }
 
-tasks.named('test') {
-    useJUnitPlatform()
-    systemProperty 'spring.profiles.active', 'test'
-}
