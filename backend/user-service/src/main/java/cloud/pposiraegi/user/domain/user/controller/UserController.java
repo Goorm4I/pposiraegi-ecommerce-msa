@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     private final UserService userService;
 
-    @PostMapping
+    @PostMapping("/register")
     public ApiResponse<UserDto.SimpleResponse> registerUser(@Valid @RequestBody UserDto.RegisterRequest request) {
         UserDto.SimpleResponse response = userService.registerUser(request);
         return ApiResponse.success(response);

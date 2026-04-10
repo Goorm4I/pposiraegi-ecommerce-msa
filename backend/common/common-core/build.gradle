@@ -1,0 +1,10 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    compileOnly 'org.springframework:spring-web'
+    api 'org.springframework:spring-context'
+    api 'com.github.f4b6a3:tsid-creator:5.2.6'
+    api 'jakarta.annotation:jakarta.annotation-api'
+}

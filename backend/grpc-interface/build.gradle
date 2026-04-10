@@ -1,7 +1,40 @@
 plugins {
     id 'java-library'
+    id 'com.google.protobuf' version '0.9.6'
 }
 
-dependencies {
+def PROTOBUF_VERSION = '3.25.8'
+def GRPC_VERSION = '1.77.1'
 
+dependencies {
+    api 'jakarta.annotation:jakarta.annotation-api:3.0.0'
+    api 'org.springframework.grpc:spring-grpc-spring-boot-starter:1.0.2'
+
+    implementation "com.google.protobuf:protobuf-java:${PROTOBUF_VERSION}"
+    implementation "io.grpc:grpc-protobuf:${GRPC_VERSION}"
+    implementation "io.grpc:grpc-stub:${GRPC_VERSION}"
+
+    constraints {
+        //org.springframework.grpc:spring-grpc-spring-boot-starter 취약점 대응
+        implementation('io.netty:netty-codec-http2:4.2.12.Final')
+        implementation('io.netty:netty-handler-proxy:4.2.12.Final')
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${PROTOBUF_VERSION}"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:${GRPC_VERSION}"
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.plugins {
+                grpc {}
+            }
+        }
+    }
 }

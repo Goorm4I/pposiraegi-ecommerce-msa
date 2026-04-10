@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cloud.pposiraegi.grpc.product";
+
+service ProductGrpcService {
+  rpc GetSkuInfos (SkuInfoRequest) returns (SkuInfoResponse);
+  rpc GetSkuPurchaseLimit (PurchaseLimitRequest) returns (PurchaseLimitResponse);
+}
+
+message SkuInfoRequest {
+  repeated int64 skuIds = 1;
+}
+
+message SkuInfo {
+  int64 skuId = 1;
+  int64 productId = 2;
+  string productName = 3;
+  string thumbnailUrl = 4;
+  string originUnitPrice = 5;
+  string saleUnitPrice = 6;
+  int32 stockQuantity = 7;
+  string combinationKey = 8;
+}
+
+message SkuInfoResponse {
+  repeated SkuInfo skuInfos = 1;
+}
+
+message PurchaseLimitRequest {
+  int64 skuId = 1;
+}
+
+message PurchaseLimitResponse {
+  int32 purchaseLimit = 1;
+}

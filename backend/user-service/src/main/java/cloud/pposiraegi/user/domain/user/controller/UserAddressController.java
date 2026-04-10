@@ -1,11 +1,11 @@
 package cloud.pposiraegi.user.domain.user.controller;
 
+import cloud.pposiraegi.common.constants.AuthConstants;
 import cloud.pposiraegi.common.dto.ApiResponse;
 import cloud.pposiraegi.user.domain.user.dto.UserAddressDto;
 import cloud.pposiraegi.user.domain.user.service.UserAddressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +18,7 @@ public class UserAddressController {
 
     @PostMapping
     public ApiResponse<?> registerAddress(
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @Valid @RequestBody UserAddressDto.Request request) {
         userAddressService.registerAddress(Long.parseLong(userId), request);
 
@@ -27,7 +27,7 @@ public class UserAddressController {
 
     @GetMapping
     public ApiResponse<List<UserAddressDto.Response>> getAllAddresses(
-            @AuthenticationPrincipal String userId) {
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId) {
         List<UserAddressDto.Response> addresses = userAddressService.getAllAddresses(Long.parseLong(userId));
 
         return ApiResponse.success(addresses);
@@ -35,7 +35,7 @@ public class UserAddressController {
 
     @PutMapping("{addressId}")
     public ApiResponse<?> updateAddress(
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @PathVariable Long addressId,
             @Valid @RequestBody UserAddressDto.Request request) {
         userAddressService.updateAddress(Long.parseLong(userId), addressId, request);
@@ -45,7 +45,7 @@ public class UserAddressController {
 
     @DeleteMapping("{addressId}")
     public ApiResponse<?> deleteAddress(
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @PathVariable Long addressId) {
         userAddressService.deleteAddress(Long.parseLong(userId), addressId);
 

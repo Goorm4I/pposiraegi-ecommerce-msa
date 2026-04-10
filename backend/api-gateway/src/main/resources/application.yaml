@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: local
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins: "http://localhost:3000"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                exposedHeaders:
+                  - Authorization
+                allowCredentials: true
+          routes:
+            - id: user-service-public
+              uri: ${USER_SERVICE_URL:http://user-service.internal:8081}
+              predicates:
+                - Path=/api/v1/users/login, /api/v1/users/register
+
+            - id: user-service-private
+              uri: ${USER_SERVICE_URL:http://user-service.internal:8081}
+              predicates:
+                - Path=/api/v1/users/**
+              filters:
+                - JwtAuthFilter
+
+            - id: order-service
+              uri: ${ORDER_SERVICE_URL:http://order-service.internal:8083}
+              predicates:
+                - Path=/api/v1/orders/**
+              filters:
+                - JwtAuthFilter
+
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URL:http://product-service.internal:8082}
+              predicates:
+                - Path=/api/v1/products/**
+
+jwt:
+  secret: ${JWT_SECRET:iqe7Fa7xrhXwJ5SLoee88Yg7DeUuJflj4+IE/XIl81tmZ24qNd4tCUble1Zk2drO=}

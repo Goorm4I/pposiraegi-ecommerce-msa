@@ -1,16 +1,13 @@
 package cloud.pposiraegi.user.domain.auth.controller;
 
+import cloud.pposiraegi.common.constants.AuthConstants;
 import cloud.pposiraegi.common.dto.ApiResponse;
 import cloud.pposiraegi.user.domain.auth.dto.AuthDto;
 import cloud.pposiraegi.user.domain.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -30,7 +27,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ApiResponse<?> logout(
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @RequestBody AuthDto.LogoutRequest logoutRequest
     ) {
         authService.logout(Long.parseLong(userId), logoutRequest);

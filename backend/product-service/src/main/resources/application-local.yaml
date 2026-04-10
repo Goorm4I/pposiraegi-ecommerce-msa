@@ -1,4 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  grpc:
+    server:
+      port: 9092
+
 logging:
   level:
-    cloud.pposiraegi.ecommerce: DEBUG
+    cloud.pposiraegi.product: DEBUG
     org.springframework.web: DEBUG

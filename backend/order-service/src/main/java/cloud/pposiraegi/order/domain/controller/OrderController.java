@@ -1,11 +1,11 @@
 package cloud.pposiraegi.order.domain.controller;
 
+import cloud.pposiraegi.common.constants.AuthConstants;
 import cloud.pposiraegi.common.dto.ApiResponse;
 import cloud.pposiraegi.order.domain.dto.OrderDto;
 import cloud.pposiraegi.order.domain.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -18,7 +18,7 @@ public class OrderController {
 
     @PostMapping
     public ApiResponse<OrderDto.OrderSheetResponse> createCheckoutSession(
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @Valid @RequestBody OrderDto.OrderSheetRequest request) {
         return ApiResponse.success(orderService.createOrderSheet(Long.parseLong(userId), request));
     }
@@ -26,7 +26,7 @@ public class OrderController {
     @GetMapping("/{checkoutId}")
     public ApiResponse<OrderDto.OrderSheetResponse> getCheckoutSession(
             @PathVariable Long checkoutId,
-            @AuthenticationPrincipal String userId
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId
     ) {
         return ApiResponse.success(orderService.getOrderSheet(Long.parseLong(userId), checkoutId));
     }
@@ -34,7 +34,7 @@ public class OrderController {
     @PostMapping("/submit")
     public ApiResponse<OrderDto.OrderResponse> createOrder(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @AuthenticationPrincipal String userId,
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId,
             @Valid @RequestBody OrderDto.OrderRequest request
     ) {
         return ApiResponse.success(orderService.createOrder(idempotencyKey, Long.parseLong(userId), request));
@@ -45,7 +45,7 @@ public class OrderController {
             @RequestParam String paymentKey,
             @RequestParam String orderNumber,
             @RequestParam BigDecimal amount,
-            @AuthenticationPrincipal String userId
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId
     ) {
         orderService.confirmPayment(paymentKey, orderNumber, amount, Long.parseLong(userId));
         return ApiResponse.success(null);
@@ -56,7 +56,7 @@ public class OrderController {
             @RequestParam String code,
             @RequestParam String message,
             @RequestParam Long orderId,
-            @AuthenticationPrincipal String userId
+            @RequestHeader(AuthConstants.USER_ID_HEADER) String userId
     ) {
         orderService.failPayment(orderId, code, message, Long.parseLong(userId));
         return ApiResponse.success(null);

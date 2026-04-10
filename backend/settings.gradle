@@ -1,7 +1,10 @@
 rootProject.name = 'ecommerce'
 
-include 'common'
 include 'user-service'
 include 'product-service'
 include 'order-service'
 include 'grpc-interface'
+include 'api-gateway'
+include 'common:common-core'
+include 'common:common-jpa'
+include 'common:common-web-mvc'

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cloud.pposiraegi.grpc.user";
+
+service UserGrpcService {
+  rpc GetLastUsedAddress (UserAddressRequest) returns (UserAddressResponse);
+}
+
+message UserAddressRequest {
+  int64 userId = 1;
+}
+
+message UserAddressResponse {
+  int64 addressId = 1;
+  string recipientName = 2;
+  string zipCode = 3;
+  string baseAddress = 4;
+  string detailAddress = 5;
+  string phoneNumber = 6;
+  string secondaryPhoneNumber = 7;
+  string requestMessage = 8;
+}

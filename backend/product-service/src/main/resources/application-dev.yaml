@@ -33,7 +33,7 @@ spring:
 
 logging:
   level:
-    cloud.pposiraegi.ecommerce: DEBUG
+    cloud.pposiraegi.product: DEBUG
     org.springframework.web: DEBUG
 
 cors:

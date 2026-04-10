@@ -1,4 +1,20 @@
+server:
+  port: 8083
+
+spring:
+  grpc:
+    server:
+      port: 9093
+    client:
+      channels:
+        user-service:
+          address: 'static://localhost:9091'
+          negotiation-type: plaintext
+        product-service:
+          address: 'static://localhost:9092'
+          negotiation-type: plaintext
+
 logging:
   level:
-    cloud.pposiraegi.ecommerce: DEBUG
+    cloud.pposiraegi.order: DEBUG
     org.springframework.web: DEBUG

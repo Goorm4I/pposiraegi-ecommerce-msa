@@ -3,7 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation project(':common')
+    implementation project(':common:common-jpa')
+    implementation project(':common:common-web-mvc')
+    implementation project(':grpc-interface')
+
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.2'
     runtimeOnly 'org.postgresql:postgresql'

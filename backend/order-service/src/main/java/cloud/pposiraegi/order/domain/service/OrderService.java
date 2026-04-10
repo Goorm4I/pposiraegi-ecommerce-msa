@@ -2,11 +2,15 @@ package cloud.pposiraegi.order.domain.service;
 
 import cloud.pposiraegi.common.exception.BusinessException;
 import cloud.pposiraegi.common.exception.ErrorCode;
+import cloud.pposiraegi.grpc.product.SkuInfo;
 import cloud.pposiraegi.order.domain.dto.OrderDto;
 import cloud.pposiraegi.order.domain.dto.PaymentDto;
+import cloud.pposiraegi.order.domain.entity.CheckoutSession;
 import cloud.pposiraegi.order.domain.entity.IdempotencyRecord;
 import cloud.pposiraegi.order.domain.entity.Order;
 import cloud.pposiraegi.order.domain.enums.IdempotencyStatus;
+import cloud.pposiraegi.order.domain.grpc.ProductGrpcClient;
+import cloud.pposiraegi.order.domain.grpc.UserGrpcClient;
 import cloud.pposiraegi.order.domain.infrastructure.payment.PaymentClient;
 import cloud.pposiraegi.order.domain.repository.IdempotencyRecordRepository;
 import cloud.pposiraegi.order.domain.repository.OrderRepository;
@@ -22,8 +26,9 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.security.MessageDigest;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,10 +36,6 @@ import java.util.concurrent.TimeUnit;
 public class OrderService {
 
     private final TsidFactory tsidFactory;
-    //    private final ProductQueryService productQueryService;
-//    private final TimeDealQueryService timeDealQueryService;
-//
-//    private final UserAddressQueryService userAddressQueryService;
     private final OrderTransactionProcessor orderTransactionProcessor;
     private final ObjectMapper objectMapper;
     private final IdempotencyRecordRepository idempotencyRecordRepository;
@@ -43,109 +44,108 @@ public class OrderService {
     private final RedisPurchaseLimitRepository redisPurchaseLimitRepository;
     private final OrderRepository orderRepository;
     private final PaymentClient paymentClient;
+    private final ProductGrpcClient productGrpcClient;
+    private final UserGrpcClient userGrpcClient;
 
     @Transactional(readOnly = true)
     public OrderDto.OrderSheetResponse createOrderSheet(Long userId, OrderDto.OrderSheetRequest request) {
-//        Long checkoutId = tsidFactory.create().toLong();
-//        BigDecimal totalAmount = BigDecimal.ZERO;
-//
-//        List<Long> requestSkuIds = request.orderItems().stream()
-//                .map(OrderDto.OrderItemRequest::skuId)
-//                .toList();
-//
-//        Map<Long, ProductInfoDto.ProductAndSkuInfo> skuMap = productQueryService.getSkuInfos(requestSkuIds).stream()
-//                .collect(Collectors.toMap(ProductInfoDto.ProductAndSkuInfo::skuId, product -> product));
-//
-//        Map<Long, CheckoutSession.ProductSnapshot> sessionProducts = new HashMap<>();
-//        List<CheckoutSession.Item> sessionItems = new ArrayList<>();
-//        Map<Long, List<OrderDto.OrderItemResponse>> orderItemsByProductId = new HashMap<>();
-//
-//        for (OrderDto.OrderItemRequest itemRequest : request.orderItems()) {
-//            ProductInfoDto.ProductAndSkuInfo sku = skuMap.get(itemRequest.skuId());
-//
-//            if (sku == null) {
-//                throw new BusinessException(ErrorCode.SKU_NOT_FOUND);
-//            }
-//
-//            if (sku.stockQuantity() < itemRequest.quantity()) {
-//                throw new BusinessException(ErrorCode.OUT_OF_STOCK);
-//            }
-//
-//            Integer purchaseLimit = productQueryService.getSkuPurchaseLimit(sku.skuId());
-//            if (purchaseLimit != null && purchaseLimit > 0) {
-//                int alreadyPurchaseCount = redisPurchaseLimitRepository.getCurrentPurchaseCount(sku.skuId(), userId);
-//                if (alreadyPurchaseCount + itemRequest.quantity() > purchaseLimit) {
-//                    throw new BusinessException(ErrorCode.PURCHASE_LIMIT_EXCEEDED);
-//                }
-//            }
-//
-//            BigDecimal lineAmount = sku.saleUnitPrice().multiply(BigDecimal.valueOf(itemRequest.quantity()));
-//            totalAmount = totalAmount.add(lineAmount);
-//
-//            sessionProducts.putIfAbsent(sku.productId(), new CheckoutSession.ProductSnapshot(sku.productName(), sku.thumbnailUrl()));
-//
-//            sessionItems.add(new CheckoutSession.Item(sku.productId(), sku.skuId(), sku.combinationKey(), itemRequest.quantity(), sku.originUnitPrice(), sku.saleUnitPrice()));
-//
-//            orderItemsByProductId.computeIfAbsent(sku.productId(), k -> new ArrayList<>())
-//                    .add(new OrderDto.OrderItemResponse(sku.combinationKey(), itemRequest.quantity(), sku.originUnitPrice(), sku.saleUnitPrice()));
-//        }
-//
-//        List<OrderDto.ProductResponse> productResponses = sessionProducts.entrySet().stream()
-//                .map(entry -> new OrderDto.ProductResponse(
-//                        entry.getValue().name(),
-//                        entry.getValue().imageUrl(),
-//                        orderItemsByProductId.get(entry.getKey())
-//                )).toList();
-//
-//        CheckoutSession checkoutSession = new CheckoutSession(checkoutId, userId, sessionProducts, sessionItems, totalAmount);
-//        checkoutSessionService.saveSession(checkoutId, checkoutSession, 15);
-//
-//        return new OrderDto.OrderSheetResponse(
-//                checkoutId.toString(),
-//                productResponses,
-//                totalAmount,
-//                getUserShippingAddress(userId)
-//        );
+        Long checkoutId = tsidFactory.create().toLong();
+        BigDecimal totalAmount = BigDecimal.ZERO;
 
-        //TODO: gRPC로직 교체
-        return null;
+        List<Long> requestSkuIds = request.orderItems().stream()
+                .map(OrderDto.OrderItemRequest::skuId)
+                .toList();
+
+        List<SkuInfo> grpcSkuInfos = productGrpcClient.getSkuInfos(requestSkuIds);
+        Map<Long, SkuInfo> skuMap = grpcSkuInfos.stream()
+                .collect(Collectors.toMap(SkuInfo::getSkuId, info -> info));
+
+        Map<Long, CheckoutSession.ProductSnapshot> sessionProducts = new HashMap<>();
+        List<CheckoutSession.Item> sessionItems = new ArrayList<>();
+        Map<Long, List<OrderDto.OrderItemResponse>> orderItemsByProductId = new HashMap<>();
+
+        for (OrderDto.OrderItemRequest itemRequest : request.orderItems()) {
+            SkuInfo sku = skuMap.get(itemRequest.skuId());
+
+            if (sku == null) {
+                throw new BusinessException(ErrorCode.SKU_NOT_FOUND);
+            }
+
+            if (sku.getStockQuantity() < itemRequest.quantity()) {
+                throw new BusinessException(ErrorCode.OUT_OF_STOCK);
+            }
+
+            Integer purchaseLimit = productGrpcClient.getSkuPurchaseLimit(sku.getSkuId());
+            if (purchaseLimit != null && purchaseLimit > 0) {
+                int alreadyPurchaseCount = redisPurchaseLimitRepository.getCurrentPurchaseCount(sku.getSkuId(), userId);
+                if (alreadyPurchaseCount + itemRequest.quantity() > purchaseLimit) {
+                    throw new BusinessException(ErrorCode.PURCHASE_LIMIT_EXCEEDED);
+                }
+            }
+
+            BigDecimal originPrice = new BigDecimal(sku.getOriginUnitPrice());
+            BigDecimal salePrice = new BigDecimal(sku.getSaleUnitPrice());
+            BigDecimal lineAmount = salePrice.multiply(BigDecimal.valueOf(itemRequest.quantity()));
+            totalAmount = totalAmount.add(lineAmount);
+
+            sessionProducts.putIfAbsent(sku.getProductId(), new CheckoutSession.ProductSnapshot(sku.getProductName(), sku.getThumbnailUrl()));
+
+            sessionItems.add(new CheckoutSession.Item(sku.getProductId(), sku.getSkuId(), sku.getCombinationKey(), itemRequest.quantity(), originPrice, salePrice));
+
+            orderItemsByProductId.computeIfAbsent(sku.getProductId(), k -> new ArrayList<>())
+                    .add(new OrderDto.OrderItemResponse(sku.getCombinationKey(), itemRequest.quantity(), originPrice, salePrice));
+        }
+
+        List<OrderDto.ProductResponse> productResponses = sessionProducts.entrySet().stream()
+                .map(entry -> new OrderDto.ProductResponse(
+                        entry.getValue().name(),
+                        entry.getValue().imageUrl(),
+                        orderItemsByProductId.get(entry.getKey())
+                )).toList();
+
+        CheckoutSession checkoutSession = new CheckoutSession(checkoutId, userId, sessionProducts, sessionItems, totalAmount);
+        checkoutSessionService.saveSession(checkoutId, checkoutSession, 15);
+
+        return new OrderDto.OrderSheetResponse(
+                checkoutId.toString(),
+                productResponses,
+                totalAmount,
+                getUserShippingAddress(userId)
+        );
     }
 
-    //
     public OrderDto.OrderSheetResponse getOrderSheet(Long userId, Long checkoutId) {
-//        CheckoutSession session = checkoutSessionService.getCheckoutSession(checkoutId);
-//
-//        if (!session.userId().equals(userId)) {
-//            throw new BusinessException(ErrorCode.CHECKOUT_USER_MISMATCH);
-//        }
-//
-//        Map<Long, List<OrderDto.OrderItemResponse>> orderItemsByProductId = new HashMap<>();
-//
-//        for (CheckoutSession.Item item : session.orderItems()) {
-//            orderItemsByProductId.computeIfAbsent(item.productId(), k -> new ArrayList<>())
-//                    .add(new OrderDto.OrderItemResponse(
-//                            item.optionCombination(),
-//                            item.quantity(),
-//                            item.originUnitPrice(),
-//                            item.saleUnitPrice()
-//                    ));
-//        }
-//
-//        List<OrderDto.ProductResponse> productResponses = session.products().entrySet().stream()
-//                .map(entry -> new OrderDto.ProductResponse(
-//                        entry.getValue().name(),
-//                        entry.getValue().imageUrl(),
-//                        orderItemsByProductId.get(entry.getKey())
-//                )).toList();
-//
-//        return new OrderDto.OrderSheetResponse(
-//                checkoutId.toString(),
-//                productResponses,
-//                session.totalAmount(),
-//                getUserShippingAddress(userId)
-//        );
-        //TODO: gRPC로직 교체
-        return null;
+        CheckoutSession session = checkoutSessionService.getCheckoutSession(checkoutId);
+
+        if (!session.userId().equals(userId)) {
+            throw new BusinessException(ErrorCode.CHECKOUT_USER_MISMATCH);
+        }
+
+        Map<Long, List<OrderDto.OrderItemResponse>> orderItemsByProductId = new HashMap<>();
+
+        for (CheckoutSession.Item item : session.orderItems()) {
+            orderItemsByProductId.computeIfAbsent(item.productId(), k -> new ArrayList<>())
+                    .add(new OrderDto.OrderItemResponse(
+                            item.optionCombination(),
+                            item.quantity(),
+                            item.originUnitPrice(),
+                            item.saleUnitPrice()
+                    ));
+        }
+
+        List<OrderDto.ProductResponse> productResponses = session.products().entrySet().stream()
+                .map(entry -> new OrderDto.ProductResponse(
+                        entry.getValue().name(),
+                        entry.getValue().imageUrl(),
+                        orderItemsByProductId.get(entry.getKey())
+                )).toList();
+
+        return new OrderDto.OrderSheetResponse(
+                checkoutId.toString(),
+                productResponses,
+                session.totalAmount(),
+                getUserShippingAddress(userId)
+        );
     }
 
     public OrderDto.OrderResponse createOrder(String idempotencyKey, Long userId, OrderDto.OrderRequest request) {
@@ -223,23 +223,23 @@ public class OrderService {
     }
 
 
-//    private OrderDto.ShippingAddressResponse getUserShippingAddress(Long userId) {
-//        var lastUsedAddress = userAddressQueryService.getLastUsedAddress(userId);
-//        if (lastUsedAddress == null) {
-//            return null;
-//        }
-//
-//        return new OrderDto.ShippingAddressResponse(
-//                lastUsedAddress.addressId(),
-//                lastUsedAddress.recipientName(),
-//                lastUsedAddress.zipCode(),
-//                lastUsedAddress.baseAddress(),
-//                lastUsedAddress.detailAddress(),
-//                lastUsedAddress.phoneNumber(),
-//                lastUsedAddress.secondaryPhoneNumber(),
-//                lastUsedAddress.requestMessage()
-//        );
-//    }
+    private OrderDto.ShippingAddressResponse getUserShippingAddress(Long userId) {
+        var lastUsedAddress = userGrpcClient.getLastUsedAddress(userId);
+        if (lastUsedAddress == null) {
+            return null;
+        }
+
+        return new OrderDto.ShippingAddressResponse(
+                lastUsedAddress.getAddressId(),
+                lastUsedAddress.getRecipientName(),
+                lastUsedAddress.getZipCode(),
+                lastUsedAddress.getBaseAddress(),
+                lastUsedAddress.getDetailAddress(),
+                lastUsedAddress.getPhoneNumber(),
+                lastUsedAddress.getSecondaryPhoneNumber(),
+                lastUsedAddress.getRequestMessage()
+        );
+    }
 
     private String generateRequestHash(OrderDto.OrderRequest request) {
         try {
