@@ -57,6 +57,11 @@ variable "private_subnet_b_cidr" {
 # 애플리케이션 설정
 ############################################
 
+variable "domain_name" {
+  description = "Custom domain for Route53 and ACM"
+  default     = "pposiraegi.cloud"
+}
+
 variable "jwt_secret" {
   description = "JWT secret key for Spring Boot"
   sensitive   = true
