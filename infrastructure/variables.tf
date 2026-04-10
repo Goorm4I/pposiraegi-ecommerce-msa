@@ -54,44 +54,8 @@ variable "private_subnet_b_cidr" {
 }
 
 ############################################
-# EC2 설정
-############################################
-
-variable "ec2_ami" {
-  description = "AMI for EC2 (Amazon Linux 2023, ap-southeast-2)"
-  default     = "ami-0c9c942bd7bf113a2"  # Amazon Linux 2023
-}
-
-variable "ec2_instance_type" {
-  description = "EC2 instance type"
-  default     = "t3.medium"
-}
-
-############################################
-# SSH / Key 설정
-############################################
-
-variable "ssh_public_key_path" {
-  description = "Path to SSH public key"
-  default     = "~/.ssh/id_ed25519.pub"
-}
-
-############################################
-# 접근 제어
-############################################
-
-variable "my_ip" {
-  description = "Your public IP for SSH access (CIDR 형식)"
-}
-
-############################################
 # 애플리케이션 설정
 ############################################
-
-variable "github_repo" {
-  description = "GitHub repo URL to clone on EC2"
-  default     = "https://github.com/Goorm4I/pposiraegi-ecommerce.git"
-}
 
 variable "jwt_secret" {
   description = "JWT secret key for Spring Boot"

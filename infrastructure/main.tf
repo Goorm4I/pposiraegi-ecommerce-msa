@@ -111,9 +111,26 @@ resource "aws_route_table_association" "public_b" {
 ###############################################################
 # Private Route Table
 ###############################################################
+resource "aws_eip" "nat" {
+  domain = "vpc"
+  tags   = { Name = "${var.project_name}-nat-eip" }
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public_a.id
+  tags          = { Name = "${var.project_name}-nat" }
+}
+
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main.id
-  tags   = { Name = "${var.project_name}-private-rt" }
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = { Name = "${var.project_name}-private-rt" }
 }
 
 resource "aws_route_table_association" "private_a" {
@@ -180,20 +197,13 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_security_group" "backend_sg" {
   vpc_id      = aws_vpc.main.id
   name        = "${var.project_name}-backend-sg"
-  description = "Backend EC2 security group"
+  description = "Backend ECS security group"
 
   ingress {
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.my_ip]
   }
 
   egress {
@@ -204,14 +214,6 @@ resource "aws_security_group" "backend_sg" {
   }
 
   tags = { Name = "${var.project_name}-backend-sg" }
-}
-
-###############################################################
-# Key Pair
-###############################################################
-resource "aws_key_pair" "main_key" {
-  key_name   = "${var.project_name}-key"
-  public_key = file(var.ssh_public_key_path)
 }
 
 ###############################################################
@@ -241,7 +243,7 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   index_document { suffix = "index.html" }
-  error_document { key    = "index.html" }
+  error_document { key = "index.html" }
 }
 
 ###############################################################
@@ -267,10 +269,11 @@ resource "aws_lb" "alb" {
 }
 
 resource "aws_lb_target_group" "backend_tg" {
-  name     = "${var.project_name}-tg"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "${var.project_name}-tg"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
 
   health_check {
     path                = "/v3/api-docs"
@@ -439,78 +442,22 @@ resource "aws_db_subnet_group" "rds" {
 }
 
 resource "aws_db_instance" "postgres" {
-  identifier             = "${var.project_name}-db"
-  engine                 = "postgres"
-  engine_version         = "15"
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  storage_type           = "gp2"
-  db_name                = "ecommerce"
-  username               = var.db_username
-  password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.rds.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  publicly_accessible    = false
-  skip_final_snapshot    = true
+  identifier              = "${var.project_name}-db"
+  engine                  = "postgres"
+  engine_version          = "15"
+  instance_class          = "db.t3.micro"
+  allocated_storage       = 20
+  storage_type            = "gp2"
+  db_name                 = "ecommerce"
+  username                = var.db_username
+  password                = var.db_password
+  db_subnet_group_name    = aws_db_subnet_group.rds.name
+  vpc_security_group_ids  = [aws_security_group.rds_sg.id]
+  publicly_accessible     = false
+  skip_final_snapshot     = true
   backup_retention_period = 1
 
   tags = { Name = "${var.project_name}-db" }
-}
-
-###############################################################
-# IAM Instance Profile (SSM 접근 - 수동 배포 및 추후 CI/CD 대비)
-###############################################################
-resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-ec2-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ec2_ssm" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-}
-
-resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "${var.project_name}-ec2-profile"
-  role = aws_iam_role.ec2_role.name
-}
-
-###############################################################
-# Backend EC2 (docker-compose: Spring Boot)
-###############################################################
-resource "aws_instance" "backend" {
-  ami                         = var.ec2_ami
-  instance_type               = var.ec2_instance_type
-  subnet_id                   = aws_subnet.public_a.id
-  vpc_security_group_ids      = [aws_security_group.backend_sg.id]
-  key_name                    = aws_key_pair.main_key.key_name
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
-
-  user_data = templatefile("${path.module}/user_data.sh", {
-    github_repo          = var.github_repo
-    jwt_secret           = var.jwt_secret
-    cors_allowed_origins = "https://${aws_cloudfront_distribution.frontend.domain_name}"
-    redis_host           = aws_elasticache_cluster.redis.cache_nodes[0].address
-    db_host              = aws_db_instance.postgres.address
-    db_username          = var.db_username
-    db_password          = var.db_password
-  })
-
-  root_block_device {
-    volume_size = 20
-    volume_type = "gp3"
-  }
-
-  tags = { Name = "${var.project_name}-backend" }
 }
 
 ###############################################################
@@ -534,11 +481,127 @@ resource "aws_elasticache_cluster" "redis" {
   tags = { Name = "${var.project_name}-redis" }
 }
 
+
 ###############################################################
-# ALB Target Group Attachment (EC2 등록)
+# ECR Repository
 ###############################################################
-resource "aws_lb_target_group_attachment" "backend" {
-  target_group_arn = aws_lb_target_group.backend_tg.arn
-  target_id        = aws_instance.backend.id
-  port             = 8080
+resource "aws_ecr_repository" "backend" {
+  name                 = "${var.project_name}-backend"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+###############################################################
+# ECS Cluster & CloudWatch Logs
+###############################################################
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/${var.project_name}-backend"
+  retention_in_days = 7
+}
+
+resource "aws_ecs_cluster" "main" {
+  name = "${var.project_name}-cluster"
+}
+
+###############################################################
+# ECS IAM Roles
+###############################################################
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "${var.project_name}-ecs-task-execution-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.project_name}-ecs-task-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ecs-tasks.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+###############################################################
+# ECS Task Definition (Fargate)
+###############################################################
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "${var.project_name}-backend"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([{
+    name      = "backend"
+    image     = "${aws_ecr_repository.backend.repository_url}:latest"
+    essential = true
+    portMappings = [{
+      containerPort = 8080
+      hostPort      = 8080
+    }]
+    environment = [
+      { name = "SPRING_PROFILES_ACTIVE", value = "prod" },
+      { name = "DB_HOST", value = aws_db_instance.postgres.address },
+      { name = "DB_USERNAME", value = var.db_username },
+      { name = "DB_PASSWORD", value = var.db_password },
+      { name = "REDIS_HOST", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
+      { name = "JWT_SECRET", value = var.jwt_secret },
+      { name = "CORS_ALLOWED_ORIGINS", value = "https://${aws_cloudfront_distribution.frontend.domain_name}" }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = aws_cloudwatch_log_group.backend.name
+        "awslogs-region"        = var.region
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+  }])
+}
+
+###############################################################
+# ECS Service
+###############################################################
+resource "aws_ecs_service" "backend" {
+  name            = "${var.project_name}-backend-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  launch_type     = "FARGATE"
+  desired_count   = 1
+
+  network_configuration {
+    subnets          = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+    security_groups  = [aws_security_group.backend_sg.id]
+    assign_public_ip = false
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend_tg.arn
+    container_name   = "backend"
+    container_port   = 8080
+  }
+
+  depends_on = [
+    aws_lb_listener.http
+  ]
 }

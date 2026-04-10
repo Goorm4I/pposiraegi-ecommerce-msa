@@ -8,24 +8,24 @@ output "alb_dns" {
   value       = "http://${aws_lb.alb.dns_name}"
 }
 
-output "backend_public_ip" {
-  description = "백엔드 EC2 퍼블릭 IP (SSH 접근용)"
-  value       = aws_instance.backend.public_ip
-}
-
 output "s3_bucket_name" {
   description = "프론트엔드 S3 버킷명 (빌드 파일 업로드용)"
   value       = aws_s3_bucket.frontend.bucket
 }
 
-output "ssh_command" {
-  description = "EC2 SSH 접속 명령어"
-  value       = "ssh -i ~/.ssh/id_ed25519 ec2-user@${aws_instance.backend.public_ip}"
+output "ecr_repository_url" {
+  description = "백엔드 ECR 레포지토리 URL"
+  value       = aws_ecr_repository.backend.repository_url
 }
 
 output "frontend_deploy_command" {
   description = "프론트엔드 S3 배포 명령어"
   value       = "aws s3 sync ./build s3://${aws_s3_bucket.frontend.bucket} --profile goorm --delete"
+}
+
+output "backend_push_command" {
+  description = "백엔드 ECR 푸시 예시 명령어"
+  value       = "docker tag backend:latest ${aws_ecr_repository.backend.repository_url}:latest && docker push ${aws_ecr_repository.backend.repository_url}:latest"
 }
 
 output "elasticache_endpoint" {
