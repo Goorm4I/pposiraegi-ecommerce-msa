@@ -1,8 +1,8 @@
 package cloud.pposiraegi.product.domain.controller;
 
+import cloud.pposiraegi.common.dto.ApiResponse;
 import cloud.pposiraegi.product.domain.dto.ProductDto;
 import cloud.pposiraegi.product.domain.service.ProductService;
-import cloud.pposiraegi.common.dto.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,10 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProductAdminController {
     private final ProductService productService;
 
-    @PostMapping
+    @PostMapping("/register")
     public ApiResponse<Void> createProduct(@Valid @RequestBody ProductDto.ProductCreateRequest request) {
         productService.createProduct(request);
         return ApiResponse.success(null);
     }
-
 }

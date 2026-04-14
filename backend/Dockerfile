@@ -13,14 +13,23 @@ COPY build.gradle settings.gradle ./
 
 # 모든 모듈의 build.gradle 복사
 COPY api-gateway/build.gradle api-gateway/
-COPY common/build.gradle common/
+COPY common/common-core/build.gradle common/common-core/
+COPY common/common-jpa/build.gradle common/common-jpa/
+COPY common/common-web-mvc/build.gradle common/common-web-mvc/
 COPY grpc-interface/build.gradle grpc-interface/
 COPY order-service/build.gradle order-service/
 COPY product-service/build.gradle product-service/
 COPY user-service/build.gradle user-service/
 
+<<<<<<< HEAD
+# 공통 모듈 소스 복사 (항상 필요)
+COPY common/common-core/src common/common-core/src
+COPY common/common-jpa/src common/common-jpa/src
+COPY common/common-web-mvc/src common/common-web-mvc/src
+=======
 # 공통 모듈 소스 복사
 COPY common/src common/src
+>>>>>>> 43732571ebd4f8a6b1648b006a0a6c83c3d1f6a0
 COPY grpc-interface/src grpc-interface/src
 
 # 대상 모듈 소스만 복사

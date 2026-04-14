@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:80}
+
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce_user}
