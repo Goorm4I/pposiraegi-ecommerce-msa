@@ -6,14 +6,16 @@ phases:
       nodejs: 20
     commands:
       - echo Installing pnpm...
-      - npm install -g pnpm
+      - npm install -g pnpm@latest
   pre_build:
     commands:
       - echo Installing dependencies...
+      - # 루트에서 모든 의존성 설치
       - pnpm install --no-frozen-lockfile
   build:
     commands:
       - echo Building Frontend...
+      - # Turbo Repo를 사용하여 프론트엔드 빌드
       - pnpm turbo run build --filter=frontend
   post_build:
     commands:
