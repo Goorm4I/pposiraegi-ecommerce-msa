@@ -137,5 +137,11 @@ public class TimeDealService {
         timeDeal.decreaseQuantity(amount);
     }
 
+    @Transactional
+    public void decreaseStockByProductId(Long productId, Integer amount) {
+        timeDealRepository.findByProductIdAndStatus(productId, TimeDealStatus.ACTIVE)
+                .ifPresent(timeDeal -> timeDeal.decreaseQuantity(amount));
+    }
+
 
 }
