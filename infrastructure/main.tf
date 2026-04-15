@@ -241,6 +241,14 @@ resource "aws_security_group" "internal_msa_sg" {
     self      = true
   }
 
+  # gRPC 내부 통신 (order-service → user/product-service)
+  ingress {
+    from_port = 9090
+    to_port   = 9090
+    protocol  = "tcp"
+    self      = true
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
