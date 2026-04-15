@@ -70,6 +70,7 @@ public class OrderTransactionProcessor {
                 .checkoutId(request.checkoutId())
                 .orderNumber(orderNumberGenerator.generate())
                 .totalAmount(session.totalAmount())
+                .shippingAddressId(request.shippingAddressId())
                 .build();
 
         orderRepository.save(order);

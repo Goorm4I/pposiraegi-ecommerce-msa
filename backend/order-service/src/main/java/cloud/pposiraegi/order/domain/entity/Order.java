@@ -32,12 +32,15 @@ public class Order extends BaseUpdatedEntity {
     @Column(name = "total_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "shipping_address_id")
+    private Long shippingAddressId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
     @Builder
-    public Order(Long id, Long userId, Long checkoutId, String orderNumber, BigDecimal totalAmount) {
+    public Order(Long id, Long userId, Long checkoutId, String orderNumber, BigDecimal totalAmount, Long shippingAddressId) {
         this.id = id;
         this.userId = userId;
         this.checkoutId = checkoutId;
