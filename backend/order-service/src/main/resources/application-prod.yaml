@@ -22,3 +22,7 @@ spring:
           max-idle: 8
           min-idle: 2
           max-wait: 1000ms
+
+pg:
+  success-url: https://pposiraegi.cloud/api/v1/orders/success
+  fail-url: https://pposiraegi.cloud/api/v1/orders/fail
