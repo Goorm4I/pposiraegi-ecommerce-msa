@@ -1,5 +1,5 @@
 # [Stage 1: Build]
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM public.ecr.aws/docker/library/eclipse-temurin:21-jdk-jammy AS build
 WORKDIR /app
 
 ARG MODULE_NAME
@@ -34,7 +34,7 @@ RUN chmod +x backend/gradlew
 RUN ./backend/gradlew -p backend :${MODULE_NAME}:bootJar -x test
 
 # [Stage 2: Run]
-FROM eclipse-temurin:21-jre-jammy
+FROM public.ecr.aws/docker/library/eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 ARG MODULE_NAME
