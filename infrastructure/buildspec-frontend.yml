@@ -11,15 +11,17 @@ phases:
     commands:
       - echo Installing dependencies...
       - pnpm install --no-frozen-lockfile
+      - echo "REACT_APP_USE_MOCK=false" >> frontend/.env
+      - echo "REACT_APP_API_URL=" >> frontend/.env
+      - echo "REACT_APP_WS_URL=wss://pposiraegi.cloud/ws/events" >> frontend/.env
+      - echo "REACT_APP_ADMIN_EMAILS=admin@test.com" >> frontend/.env
   build:
     commands:
       - echo Building Frontend...
-      - # 실제 패키지 이름인 timedeal-front를 사용하여 빌드
       - pnpm turbo run build --filter=timedeal-front
   post_build:
     commands:
       - echo Deploying to S3...
-      - # 빌드 결과물이 frontend/build 폴더에 생성되는지 확인
       - aws s3 sync frontend/build s3://$S3_BUCKET --delete
       - echo Invalidating CloudFront cache...
       - aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_ID --paths "/*"
