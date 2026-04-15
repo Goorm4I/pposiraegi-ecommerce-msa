@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 
 @Component
-@Profile({"dev", "local", "test"})
+@Profile({"dev", "local", "test", "prod"})
 public class MockPaymentClient implements PaymentClient {
     @Override
     public PaymentDto.PaymentResponse confirm(String paymentKey, String orderNumber, BigDecimal amount) {
