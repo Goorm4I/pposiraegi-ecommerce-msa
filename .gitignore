@@ -1,0 +1,6 @@
+# 로컬 전용 가이드 (GitHub에 올리지 않음)
+PROJECT_LOCAL.md
+
+# 로컬 환경 파일
+*.local
+.env.local
