@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:80}
+  
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ecommerce_order}
@@ -8,8 +11,8 @@ spring:
       ddl-auto: create
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
       database: 1
       timeout: 3000ms
       lettuce:

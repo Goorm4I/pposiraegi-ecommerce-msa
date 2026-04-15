@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pposiraegi-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ecommerce_product
+    entrypoint: >
+      sh -c '
+        echo "CREATE DATABASE ecommerce_user; CREATE DATABASE ecommerce_order;" > /docker-entrypoint-initdb.d/init.sql
+        exec docker-entrypoint.sh postgres
+      '
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U user -d ecommerce" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pposiraegi-redis
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build:
+      context: .
+      args:
+        MODULE_NAME: api-gateway
+    container_name: pposiraegi-api-gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_REDIS_HOST=redis
+      - USER_SERVICE_URL=http://user-service
+      - PRODUCT_SERVICE_URL=http://product-service
+      - ORDER_SERVICE_URL=http://order-service
+
+  user-service:
+    build:
+      context: .
+      args:
+        MODULE_NAME: user-service
+    container_name: pposiraegi-user-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ecommerce_user
+      - SPRING_REDIS_HOST=redis
+
+  product-service:
+    build:
+      context: .
+      args:
+        MODULE_NAME: product-service
+    container_name: pposiraegi-product-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ecommerce_product
+      - SPRING_REDIS_HOST=redis
+
+  order-service:
+    build:
+      context: .
+      args:
+        MODULE_NAME: order-service
+    container_name: pposiraegi-order-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/ecommerce_order
+      - SPRING_REDIS_HOST=redis

@@ -10,3 +10,5 @@ logging:
   level:
     cloud.pposiraegi.user: DEBUG
     org.springframework.web: DEBUG
+
+  spring.grpc
