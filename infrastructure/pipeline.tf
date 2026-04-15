@@ -34,8 +34,19 @@ resource "aws_iam_role_policy" "codebuild_policy" {
       },
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:GetObjectVersion", "s3:PutObject", "s3:GetBucketLocation"]
-        Resource = ["${aws_s3_bucket.pipeline_artifacts.arn}*", "${aws_s3_bucket.frontend.arn}*"]
+        Action   = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "${aws_s3_bucket.pipeline_artifacts.arn}",
+          "${aws_s3_bucket.pipeline_artifacts.arn}/*",
+          "${aws_s3_bucket.frontend.arn}",
+          "${aws_s3_bucket.frontend.arn}/*"
+        ]
       },
       {
         Effect   = "Allow"
@@ -277,8 +288,17 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:GetObjectVersion", "s3:GetBucketLocation", "s3:PutObject"]
-        Resource = ["${aws_s3_bucket.pipeline_artifacts.arn}*"]
+        Action   = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetBucketLocation",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "${aws_s3_bucket.pipeline_artifacts.arn}",
+          "${aws_s3_bucket.pipeline_artifacts.arn}/*"
+        ]
       },
       {
         Effect   = "Allow"
