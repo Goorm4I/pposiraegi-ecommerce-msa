@@ -6,6 +6,7 @@ import cloud.pposiraegi.product.domain.dto.ProductInfoDto;
 import cloud.pposiraegi.product.domain.entity.ProductSku;
 import cloud.pposiraegi.product.domain.repository.ProductSkuRepository;
 import cloud.pposiraegi.product.domain.service.ProductQueryService;
+import cloud.pposiraegi.product.domain.service.ProductService;
 import cloud.pposiraegi.product.domain.service.ProductStockService;
 import cloud.pposiraegi.product.domain.service.TimeDealService;
 import io.grpc.Status;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class ProductGrpcProvider extends ProductGrpcServiceGrpc.ProductGrpcServiceImplBase {
 
     private final ProductQueryService productQueryService;
+    private final ProductService productService;
     private final ProductStockService productStockService;
     private final ProductSkuRepository productSkuRepository;
     private final TimeDealService timeDealService;
@@ -71,6 +73,11 @@ public class ProductGrpcProvider extends ProductGrpcServiceGrpc.ProductGrpcServi
         try {
             // Redis SKU 재고 차감
             productStockService.decreaseStocks(stockMap);
+
+            // DB product_sku.stock_quantity 차감 (비관적 락)
+            for (Map.Entry<Long, Integer> entry : stockMap.entrySet()) {
+                productService.decreaseStock(entry.getKey(), entry.getValue());
+            }
 
             // TimeDeal DB remainQuantity 차감 (skuId → productId → active TimeDeal)
             List<Long> skuIds = List.copyOf(stockMap.keySet());
