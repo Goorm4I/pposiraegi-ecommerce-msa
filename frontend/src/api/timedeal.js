@@ -18,11 +18,11 @@ const mapDeal = (deal) => {
 
   // 백엔드 상태 → 프론트 상태 정규화
   // PENDING → UPCOMING, EXPIRED → ENDED
-  // ACTIVE + SKU 재고 0 → SOLDOUT (백엔드가 아직 상태 갱신 안 한 경우)
+  // ACTIVE + 재고 0 → SOLDOUT (SKU 데이터 유무 무관하게 stock=0이면 품절)
   const rawStatus = deal.status === 'PENDING' ? 'UPCOMING'
                   : deal.status === 'EXPIRED' ? 'ENDED'
                   : deal.status;
-  const status = (rawStatus === 'ACTIVE' && hasSkus && skuTotalStock === 0)
+  const status = (rawStatus === 'ACTIVE' && totalStock > 0 && stock === 0)
     ? 'SOLDOUT'
     : rawStatus;
 
