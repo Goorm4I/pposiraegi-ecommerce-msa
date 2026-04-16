@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+
+    # HTTPS 강제 리다이렉트
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+
+    # ACM 인증서 (terraform output acm_certificate_arn)
+    alb.ingress.kubernetes.io/certificate-arn: REPLACE_ME_ACM_ARN
+
+    # 헬스체크 (argocd-server HTTP 모드)
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/success-codes: "200"
+
+    # ALB SG 태그로 자동 선택
+    alb.ingress.kubernetes.io/security-groups: REPLACE_ME_ALB_SG_ID
+spec:
+  rules:
+    - host: argocd.REPLACE_ME_DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80

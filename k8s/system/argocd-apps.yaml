@@ -1,0 +1,44 @@
+# App of Apps 패턴: 이 하나가 아래 4개 Application을 모두 관리
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pposiraegi-apps
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Goorm4I/pposiraegi-ecommerce-msa
+    targetRevision: main
+    path: k8s/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pposiraegi
+  syncPolicy:
+    automated:
+      prune: true       # Git에서 지운 리소스 자동 삭제
+      selfHeal: true    # 수동 변경 시 Git 상태로 자동 복구
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+
+---
+# 시스템 컴포넌트 (Karpenter, ESO 등)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pposiraegi-system
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Goorm4I/pposiraegi-ecommerce-msa
+    targetRevision: main
+    path: k8s/system
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
