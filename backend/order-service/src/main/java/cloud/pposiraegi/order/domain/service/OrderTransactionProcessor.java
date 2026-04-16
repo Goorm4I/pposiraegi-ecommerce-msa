@@ -75,7 +75,8 @@ public class OrderTransactionProcessor {
                 .shippingAddressId(request.shippingAddressId())
                 .build();
 
-        orderRepository.save(order);
+        // merge()가 반환하는 managed 엔티티를 사용해야 dirty checking 작동
+        Order managedOrder = orderRepository.save(order);
 
         List<OrderItem> orderItems = new ArrayList<>();
         String orderName = "";
@@ -100,18 +101,18 @@ public class OrderTransactionProcessor {
             orderItems.add(orderItem);
         }
 
-        orderItemRepository.saveAll(orderItems);
+        List<OrderItem> managedItems = orderItemRepository.saveAll(orderItems);
 
         // 재고 차감 (gRPC → product-service Redis)
         Map<Long, Integer> stockDecreaseMap = new HashMap<>();
-        for (OrderItem item : orderItems) {
+        for (OrderItem item : managedItems) {
             stockDecreaseMap.merge(item.getSkuId(), item.getQuantity(), Integer::sum);
         }
         productGrpcClient.decreaseStocks(stockDecreaseMap);
 
-        // 목 결제: 실제 PG 콜백 없이 바로 PAID 처리
-        order.updateStatus(OrderStatus.PAID);
-        for (OrderItem item : orderItems) {
+        // 목 결제: managed 엔티티에 updateStatus → 트랜잭션 커밋 시 DB 반영
+        managedOrder.updateStatus(OrderStatus.PAID);
+        for (OrderItem item : managedItems) {
             item.updateStatus(OrderItemStatus.PAID);
         }
 
