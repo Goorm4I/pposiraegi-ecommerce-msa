@@ -84,6 +84,22 @@ export const getOrder = async (checkoutId) => {
   return res.data?.data ?? null;
 };
 
+// ── 목 결제 확정 (PENDING_PAYMENT → PAID) ────────────────────────
+// GET /api/v1/orders/success?paymentKey=MOCK&orderNumber=...&amount=...
+// 실제 Toss PG에서는 PG가 브라우저를 successUrl로 리다이렉트해서 자동 호출됨
+// 목 흐름에서는 submitOrder 후 직접 호출해 PAID 상태로 전환
+export const confirmMockPayment = async (orderNumber, amount) => {
+  if (USE_MOCK) return;
+
+  await axios.get(
+    `${API_BASE_URL}/api/v1/orders/success`,
+    {
+      params: { paymentKey: 'MOCK_PAYMENT_KEY', orderNumber, amount },
+      headers: getAuthHeader(),
+    }
+  );
+};
+
 // ── 내 주문 내역 조회 ─────────────────────────────────────────────
 // GET /api/v1/orders/my
 export const getMyOrders = async () => {
