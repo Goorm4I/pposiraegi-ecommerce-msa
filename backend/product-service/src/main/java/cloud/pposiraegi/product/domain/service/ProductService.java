@@ -217,7 +217,7 @@ public class ProductService {
 
     @Transactional
     public void decreaseStock(Long skuId, int quantity) {
-        ProductSku sku = productSkuRepository.findById(skuId)
+        ProductSku sku = productSkuRepository.findByIdForUpdate(skuId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SKU_NOT_FOUND));
 
         sku.removeStock(quantity);
