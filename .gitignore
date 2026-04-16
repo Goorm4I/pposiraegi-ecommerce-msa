@@ -4,3 +4,18 @@ PROJECT_LOCAL.md
 # 로컬 환경 파일
 *.local
 .env.local
+
+# Terraform - state/secrets는 절대 커밋 금지
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+tfplan
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.terraform/
+.terraform.lock.hcl
+
+# macOS
+.DS_Store
+**/.DS_Store
