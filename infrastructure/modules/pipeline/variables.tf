@@ -1,0 +1,12 @@
+variable "project_name"             { type = string }
+variable "region"                   { type = string }
+variable "suffix"                   { type = string }
+variable "frontend_s3_bucket_arn"   { type = string }
+variable "frontend_s3_bucket_name"  { type = string }
+variable "ecr_repository_urls"      { type = map(string) }
+variable "ecs_cluster_name"         { type = string }
+variable "ecs_service_names"        { type = map(string) }
+variable "cloudfront_distribution_id" { type = string }
+variable "github_repo"              { type = string }
+variable "github_branch"            { type = string }
+variable "codestar_connection_arn"  { type = string }

@@ -1,0 +1,9 @@
+output "cloudfront_domain"      { value = aws_cloudfront_distribution.frontend.domain_name }
+output "cloudfront_id"          { value = aws_cloudfront_distribution.frontend.id }
+output "cloudfront_hosted_zone_id" { value = aws_cloudfront_distribution.frontend.hosted_zone_id }
+output "alb_dns_name"           { value = aws_lb.alb.dns_name }
+output "alb_arn_suffix"         { value = aws_lb.alb.arn_suffix }
+output "alb_target_group_arn"   { value = aws_lb_target_group.backend_tg.arn }
+output "alb_listener_arn"       { value = aws_lb_listener.http.arn }
+output "s3_bucket_name"         { value = aws_s3_bucket.frontend.bucket }
+output "s3_bucket_arn"          { value = aws_s3_bucket.frontend.arn }

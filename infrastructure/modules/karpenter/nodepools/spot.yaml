@@ -1,0 +1,48 @@
+# Spot 노드풀 (비용 절감, 중단 허용 워크로드용)
+# 타임딜 트래픽 폭주 시 빠르게 스케일아웃하면서 비용 최소화
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: spot
+spec:
+  template:
+    metadata:
+      labels:
+        role: app
+        capacity-type: spot
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot"]
+        # Spot은 다양한 인스턴스 타입 허용할수록 가용성 높아짐
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values:
+            - t3.medium
+            - t3.large
+            - t3a.medium
+            - t3a.large
+            - t2.medium
+            - m5.large
+        - key: topology.kubernetes.io/zone
+          operator: In
+          values:
+            - ap-northeast-2a
+            - ap-northeast-2b
+
+      kubelet:
+        maxPods: 58
+
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 60s  # Spot은 좀 더 여유있게
+
+  limits:
+    cpu: 40
+    memory: 80Gi

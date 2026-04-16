@@ -1,14 +1,20 @@
-###############################################################
-# CodePipeline & CodeBuild (Service-Specific Deployment)
-###############################################################
+locals {
+  services = toset(["api-gateway", "user-service", "product-service", "order-service"])
+}
 
-# Artifact Bucket (하나로 통합 관리)
+data "aws_caller_identity" "current" {}
+
+###############################################################
+# Artifact S3
+###############################################################
 resource "aws_s3_bucket" "pipeline_artifacts" {
-  bucket        = "${var.project_name}-pipeline-artifacts-${random_id.suffix.hex}"
+  bucket        = "${var.project_name}-pipeline-artifacts-${var.suffix}"
   force_destroy = true
 }
 
-# IAM Role for CodeBuild (공용 사용)
+###############################################################
+# IAM - CodeBuild
+###############################################################
 resource "aws_iam_role" "codebuild_role" {
   name = "${var.project_name}-codebuild-role"
   assume_role_policy = jsonencode({
@@ -33,20 +39,16 @@ resource "aws_iam_role_policy" "codebuild_policy" {
         Resource = ["*"]
       },
       {
-        Effect   = "Allow"
-        Action   = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
-          "s3:PutObject",
-          "s3:DeleteObject",
-          "s3:GetBucketLocation",
-          "s3:ListBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject", "s3:GetObjectVersion", "s3:PutObject",
+          "s3:DeleteObject", "s3:GetBucketLocation", "s3:ListBucket"
         ]
         Resource = [
-          "${aws_s3_bucket.pipeline_artifacts.arn}",
+          aws_s3_bucket.pipeline_artifacts.arn,
           "${aws_s3_bucket.pipeline_artifacts.arn}/*",
-          "${aws_s3_bucket.frontend.arn}",
-          "${aws_s3_bucket.frontend.arn}/*"
+          var.frontend_s3_bucket_arn,
+          "${var.frontend_s3_bucket_arn}/*"
         ]
       },
       {
@@ -78,13 +80,55 @@ resource "aws_iam_role_policy" "codebuild_policy" {
   })
 }
 
-data "aws_caller_identity" "current" {}
+###############################################################
+# IAM - CodePipeline
+###############################################################
+resource "aws_iam_role" "codepipeline_role" {
+  name = "${var.project_name}-codepipeline-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "codepipeline.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "codepipeline_policy" {
+  name = "${var.project_name}-codepipeline-policy"
+  role = aws_iam_role.codepipeline_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject", "s3:GetObjectVersion",
+          "s3:GetBucketLocation", "s3:PutObject", "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.pipeline_artifacts.arn,
+          "${aws_s3_bucket.pipeline_artifacts.arn}/*"
+        ]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["codestar-connections:UseConnection"]
+        Resource = ["*"]
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["codebuild:BatchGetBuilds", "codebuild:StartBuild"]
+        Resource = ["*"]
+      }
+    ]
+  })
+}
 
 ###############################################################
-# Backend Pipelines (4 Services)
+# CodeBuild - Backend (4 services)
 ###############################################################
-
-# CodeBuild Projects for Backend
 resource "aws_codebuild_project" "backend" {
   for_each     = local.services
   name         = "${var.project_name}-${each.key}-build"
@@ -105,7 +149,7 @@ resource "aws_codebuild_project" "backend" {
     }
     environment_variable {
       name  = "ECR_REPOSITORY_URL"
-      value = aws_ecr_repository.msa[each.key].repository_url
+      value = var.ecr_repository_urls[each.key]
     }
     environment_variable {
       name  = "MODULE_NAME"
@@ -113,11 +157,11 @@ resource "aws_codebuild_project" "backend" {
     }
     environment_variable {
       name  = "ECS_CLUSTER"
-      value = aws_ecs_cluster.main.name
+      value = var.ecs_cluster_name
     }
     environment_variable {
       name  = "ECS_SERVICE"
-      value = aws_ecs_service.msa[each.key].name
+      value = var.ecs_service_names[each.key]
     }
   }
 
@@ -127,11 +171,13 @@ resource "aws_codebuild_project" "backend" {
   }
 }
 
-# CodePipeline for Backend with Path Filters
+###############################################################
+# CodePipeline - Backend (4 services)
+###############################################################
 resource "aws_codepipeline" "backend" {
-  for_each = local.services
-  name     = "${var.project_name}-${each.key}-pipeline"
-  role_arn = aws_iam_role.codepipeline_role.arn
+  for_each      = local.services
+  name          = "${var.project_name}-${each.key}-pipeline"
+  role_arn      = aws_iam_role.codepipeline_role.arn
   pipeline_type = "V2"
 
   artifact_store {
@@ -170,12 +216,12 @@ resource "aws_codepipeline" "backend" {
   stage {
     name = "BuildAndDeploy"
     action {
-      name             = "Build"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      input_artifacts  = ["source_output"]
-      version          = "1"
+      name            = "Build"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      input_artifacts = ["source_output"]
+      version         = "1"
       configuration = {
         ProjectName = aws_codebuild_project.backend[each.key].name
       }
@@ -184,25 +230,24 @@ resource "aws_codepipeline" "backend" {
 }
 
 ###############################################################
-# Frontend Pipeline (1 Service)
+# CodeBuild - Frontend
 ###############################################################
-
 resource "aws_codebuild_project" "frontend" {
   name         = "${var.project_name}-frontend-build"
   service_role = aws_iam_role.codebuild_role.arn
   artifacts { type = "CODEPIPELINE" }
 
   environment {
-    compute_type    = "BUILD_GENERAL1_SMALL"
-    image           = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
-    type            = "LINUX_CONTAINER"
+    compute_type = "BUILD_GENERAL1_SMALL"
+    image        = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type         = "LINUX_CONTAINER"
     environment_variable {
       name  = "S3_BUCKET"
-      value = aws_s3_bucket.frontend.bucket
+      value = var.frontend_s3_bucket_name
     }
     environment_variable {
       name  = "CLOUDFRONT_ID"
-      value = aws_cloudfront_distribution.frontend.id
+      value = var.cloudfront_distribution_id
     }
   }
 
@@ -212,9 +257,12 @@ resource "aws_codebuild_project" "frontend" {
   }
 }
 
+###############################################################
+# CodePipeline - Frontend
+###############################################################
 resource "aws_codepipeline" "frontend" {
-  name     = "${var.project_name}-frontend-pipeline"
-  role_arn = aws_iam_role.codepipeline_role.arn
+  name          = "${var.project_name}-frontend-pipeline"
+  role_arn      = aws_iam_role.codepipeline_role.arn
   pipeline_type = "V2"
 
   artifact_store {
@@ -253,64 +301,15 @@ resource "aws_codepipeline" "frontend" {
   stage {
     name = "BuildAndDeploy"
     action {
-      name             = "Build"
-      category         = "Build"
-      owner            = "AWS"
-      provider         = "CodeBuild"
-      input_artifacts  = ["source_output"]
-      version          = "1"
+      name            = "Build"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      input_artifacts = ["source_output"]
+      version         = "1"
       configuration = {
         ProjectName = aws_codebuild_project.frontend.name
       }
     }
   }
-}
-
-###############################################################
-# IAM for Pipeline
-###############################################################
-resource "aws_iam_role" "codepipeline_role" {
-  name = "${var.project_name}-codepipeline-role"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "codepipeline.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy" "codepipeline_policy" {
-  name = "${var.project_name}-codepipeline-policy"
-  role = aws_iam_role.codepipeline_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = [
-          "s3:GetObject",
-          "s3:GetObjectVersion",
-          "s3:GetBucketLocation",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ]
-        Resource = [
-          "${aws_s3_bucket.pipeline_artifacts.arn}",
-          "${aws_s3_bucket.pipeline_artifacts.arn}/*"
-        ]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["codestar-connections:UseConnection"]
-        Resource = ["*"]
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["codebuild:BatchGetBuilds", "codebuild:StartBuild"]
-        Resource = ["*"]
-      }
-    ]
-  })
 }
